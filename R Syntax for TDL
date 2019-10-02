@@ -1,0 +1,148 @@
+# Purpose: Using the Target Central Resource Database (TCRD) and Target Development/Druggability Level (TDL) classification system to identify druggable targets for alcohol use disorder and alcohol-related liver disease (ALD)
+# Created by Mikela Murphy (mikela.murphy.ctr@usuhs.edu)
+
+# NOTE: Make sure to update the file paths. These are indicated by "FILEPATH".
+# TCRD source: Oprea, T. I., Bologa, C. G., Brunak, S., Campbell, A., Gan, G. N., Gaulton, A., ... & Jadhav, A. (2018). Unexplored therapeutic opportunities in the human genome.Nature reviews Drug discovery,17(5), 317.
+
+
+setwd("FILEPATH")
+
+#Load packages
+library(tidyr)
+library(plyr)
+library(dplyr)
+library(gtools)
+library(compare)
+library(readxl)
+library(stats)
+
+############################
+## Table 5 column x merge ##
+############################
+
+#Import Supplementary Table 5
+#Note: Supplementary Table 5 is from Liu, M., Jiang, Y., Wedow, R., Li, Y., Brazel, D. M., Chen, F., ... & Zhan, X. (2019). Association studies of up to 1.2 million individuals yield new insights into the genetic etiology of tobacco and alcohol use. Nature genetics, 51(2), 237=244.
+
+Table_5_column_x <- read.csv("Liu_Table_5.csv", header=TRUE, na.strings ="")
+
+#Remove rows with no gene in first column
+Table_5_column_x <- Table_5_column_x[complete.cases(Table_5_column_x$Genes_Harboring_Variants),]
+
+#Remove duplicate genes
+Table_5_column_x <- Table_5_column_x[!duplicated(Table_5_column_x$Genes_Harboring_Variants),]
+
+#Replace all ";" and "|" separators with ","
+Table_5_column_x$Genes_Harboring_Variants <- gsub(x = Table_5_column_x$Genes_Harboring_Variants,
+                                                  pattern = ";",
+                                                  replacement = ",")
+
+Table_5_column_x$Genes_Harboring_Variants <- gsub(x = Table_5_column_x$Genes_Harboring_Variants,
+                                                  pattern = "\\|",
+                                                  replacement = ",")
+
+#Separate cells with multiple genes into separate rows
+Table_5_column_x <- separate_rows(Table_5_column_x, Genes_Harboring_Variants, sep=",")
+
+#Remove any spaces before the gene names
+Table_5_column_x$Genes_Harboring_Variants <- gsub('\\s+', '', Table_5_column_x$Genes_Harboring_Variants)
+
+#Remove duplicate genes
+Table_5_column_x <- Table_5_column_x[!duplicated(Table_5_column_x$Genes_Harboring_Variants),]
+
+#write.csv(Table_5_column_x, file="column_x_filtered.csv", row.names=FALSE)
+
+#Import TCRD data set 
+# TCRD can be downloaded from: http://juniper.health.unm.edu/tcrd/download/. The file is called "latest.sql.gz"
+TCRD <- read.csv("TCRDv5.4.2exp.csv", header=TRUE, na.strings ="")
+
+myvars <- c("TCRD_ID", "DTO_ID", "DTO_Family", "DTO_Family_Ext", "TDL", "Name", "Description", "HGNC_Sym", "NCBI_Gene_ID",
+            "UniProt", "STRING_ID", "IDG_Phase_2", "Chr", "UniProt_Family", "PANTHER_Classes", "DTO_Classification", "GeneRIF_Count",
+            "NCBI_Gene_PubMed_Count", "JensenLab_PubMed_Score", "PubTator_Score", "Ab_Count", "Monoclonal_Ab_Count", "TIN_X_Novelty_Score",
+            "L1000_ID", "Activity_Count", "ChEMBL_Selective_Compound", "ChEMBL_First_Reference_Year", "DrugCentral_Activity_Count", "PDB_Count",
+            "PDBs", "GO_Annotation_Count", "Experimental_MF_BP_Leaf_Term_GOAs", "OMIM_Confirmed_Phenotypes", "GWAS_Phenotype_Count", "GWAS_Phenotypes",
+            "IMPC_Phenotype_Count", "IMPC_Phenotypes", "JAX_MGI_Human_Ortholog_Phenotype_Count", "JAX_MGI_Human_Ortholog_Phenotypes", "Pathway_Count", "Pathways", "Total_Disease_Count",
+            "Top_5_Text_Mining_DISEASES", "eRAM_Diseases", "EBI_Patent_Count", "Is_Transcription_Factor", "TMHMM_Prediction", "Drugable_Epigenome_Classes", "GTEx_Tissue_Specificity_Index",
+            "HPA_Protein_Tissue_Specificity_Index", "HPA_RNA_Tissue_Specificity_Index", "HPM_Gene_Tissue_Specificity_Index", "HPM_Protein_Tissue_Specificity_Index", "gene_1")
+
+TCRD <- TCRD[myvars]
+
+#Remove rows with no gene
+TCRD <- TCRD[complete.cases(TCRD$HGNC_Sym),]
+
+#Merge Table 5 column x and TCRD
+myData_column_x <- merge(Table_5_column_x, TCRD, by.x="Genes_Harboring_Variants", by.y="gene_1")
+
+############################
+## Table 5 column y merge ##
+############################
+
+#Import Table 5
+Table_5_column_y <- read.csv("Liu_Table_5.csv", header=TRUE, na.strings ="")
+
+#Remove rows with no gene in second column
+Table_5_column_y <- Table_5_column_y[complete.cases(Table_5_column_y$Significant_Genes),]
+
+#Remove duplicate genes
+Table_5_column_y <- Table_5_column_y[!duplicated(Table_5_column_y$Significant_Genes),]
+
+#Replace all ";" and "|" separators with ","
+Table_5_column_y$Significant_Genes <- gsub(x = Table_5_column_y$Significant_Genes,
+                                           pattern = ";",
+                                           replacement = ",")
+
+Table_5_column_y$Significant_Genes <- gsub(x = Table_5_column_y$Significant_Genes,
+                                           pattern = "\\|",
+                                           replacement = ",")
+
+#Separate cells with multiple genes into separate rows
+Table_5_column_y <- separate_rows(Table_5_column_y, Significant_Genes, sep=",")
+
+#Remove any spaces before the gene names
+Table_5_column_y$Significant_Genes <- gsub('\\s+', '', Table_5_column_y$Significant_Genes)
+
+#Remove duplicate genes
+Table_5_column_y <- Table_5_column_y[!duplicated(Table_5_column_y$Significant_Genes),]
+
+#write.csv(Table_5_column_y, file="column_y_filtered.csv")
+
+#Merge Table 5 column y and TCRD
+myData_column_y <- merge(Table_5_column_y, TCRD, by.x="Significant_Genes", by.y="gene_1")
+
+############################
+## Combined columns merge ##
+############################
+
+#Optional step, only utilize if 1 output file is desired from two separate gene-based analyses. The "Combined_Columns.csv" file is created by combining the outputs from Table_5_column_x and Table_5_column_y into 1 file with the gene column called "Combined_Columns". 
+
+Combined_Columns <- read.csv("Combined_Columns.csv", header=TRUE, na.strings ="")
+
+#Remove duplicate genes
+Combined_Columns <- Combined_Columns[!duplicated(Combined_Columns$Combined_Columns),]
+
+#Merge genes with TCRD
+Combined_Columns_TCRD_merge <- merge(Combined_Columns, TCRD, by.x="Combined_Columns", by.y="gene_1", all.x=TRUE)
+
+write.csv(myData_Combined_Columns, file="Combined_Columns_TCRD_merge.csv", row.names=FALSE)
+
+#################
+## iRIGS merge ##
+#################
+
+#Import iRIGS table
+iRIGS <- read_excel("IRIGS_results.xlsx")
+
+myvars <- c("gene", "post_prob", "region")
+
+iRIGS <- iRIGS[myvars]
+
+#Filter iRIGS table for highest probability
+iRIGS <- iRIGS[order(iRIGS$region, -(iRIGS$post_prob)) , ] #sort by id and reverse of probability
+iRIGS <- iRIGS[ !duplicated(iRIGS$region), ]               #take the first row within each id
+
+#Merge iRIGS with TCRD
+iRIGS_TCRD_merge <- merge(iRIGS, TCRD, by.x="gene", by.y="gene_1")
+
+write.csv(iRIGS_TCRD_merge, file="iRIGS_TCRD_merge.csv", row.names=FALSE)
+
+##Note for genes that did not have a match in the TCRD we did a manual search in HGNC (https://www.genenames.org/) for aliases. 
+##Note medications and ATC codes for Tclin were manually searched in PHAROS (https://pharos.nih.gov/) and DrugBank (https://www.drugbank.ca/atc) respectively. 
