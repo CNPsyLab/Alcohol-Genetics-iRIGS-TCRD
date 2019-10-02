@@ -1,0 +1,54 @@
+###Note this is just what we REMOVED from the original iRIGS syntax, which can be found in its entirety here: https://www.vumc.org/cgg/irigs
+###Citation: Wang, Q., Chen, R., Cheng, F., Wei, Q., Ji, Y., Yang, H., ... & Liu, C. (2019). A Bayesian framework that integrates multi-omics data and gene networks predicts risk genes from schizophrenia GWAS data. Nature neuroscience, 22(5), 691-699.
+##======================================= adding de novo mutation ===================================================###
+
+ cat("Collecting extra evidence: De novo mutations...\n")
+
+ adding_mutation<-function()
+ {
+  path<-"./supporting_files/SCZ_DNM/"
+
+  dnm<-read.delim(paste(path,"2014_Feb_De_novo_mutation_in_SCZ_Nature_623_trios_s3.txt",sep=""),as.is=T)
+  dnm<-dnm[,c("Child.phenotype","Study","Genes","Gene.annotations")]
+
+  fromer<-read.delim(paste(path,"2014_Feb_De_novo_mutation_in_SCZ_Nature_623_trios_s2.txt",sep=""),as.is=T)
+  fromer$Child.phenotype<-"SZ"; fromer$Study<-"Fromer"
+  fromer<-fromer[,c("Child.phenotype","Study","Genes","Gene.annotations")]
+
+  gir<-dnm[dnm$Study=="Girard",]
+  xu<-dnm[dnm$Study=="Xu",]
+  gul<-dnm[dnm$Study=="Gulsuner",]
+
+  case<-rbind(gir,xu[xu[,1]=="SZ",],gul[gul[,1]=="SZ",],fromer)
+  index2<-is.element(case$Gene.annotations,c("esplice","frameshift","nonsense","missense","codon-deletion","code-insertion"))
+  case<-case[index2,]
+  case
+  #length(unique(case$Genes))/20000
+ }
+
+ case<-adding_mutation()
+
+ ###======================================= end of adding de novo mutation ===================================================###
+
+
+ ###======================================= adding differential expression ================================================###
+
+ cat("Collecting extra evidence: Differential expression...\n")
+
+ path<-paste("./supporting_files/SCZ_DE/",
+             "CMC_MSSM-Penn-Pitt_DLPFC_mRNA_IlluminaHiSeq2500_gene-adjustedSVA-differentialExpression-includeAncestry-DxSCZ-DE.tsv",
+              sep="")
+ dexpr<-read.delim(path)
+ 
+ ###==================================== end of adding differential expression =============================================###
+
+###====================================   combining p-values   =============================================###
+
+ p1<-length(unique(case$Genes))/20000; p_denovo<-numeric()                  ### adding de novo p-value
+ p_denovo[is.element(gene$official_name,case$Genes)]<-p1
+ p_denovo[!is.element(gene$official_name,case$Genes)]<-1-p1
+ extra_p<-cbind(extra_p,p_denovo)
+ 
+ extra_p<-cbind(extra_p,dexpr[match(gene$Name,dexpr$genes),]$P.Value)       ### adding differential expression p-value
+
+
